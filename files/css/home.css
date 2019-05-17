@@ -1,0 +1,41 @@
+.strip-mylist {
+  font-size: 20px;
+  height: auto;
+  width: auto;
+  background: #282828;
+}
+
+#title.strip-mylist-text {
+  background: black;
+  color: #e1bc78;
+}
+
+#desc.strip-mylist-text {
+  padding: 20px;
+  color: #939393;
+}
+
+.strip-mylist-table {
+  padding: 20px;
+}
+
+table {
+  border-collapse: collapse;
+  width: auto;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(odd){background-color: rgba(0, 0, 0, 0.2);}
+
+th {
+  background-color: black;
+  color: #939393;
+}
+
+td {
+  color: white;
+}
