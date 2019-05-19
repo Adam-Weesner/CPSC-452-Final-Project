@@ -38,19 +38,17 @@ if(isset($_POST['registerButton'])){
   if($wasSuccessful == true){ //if there are no errors
     $_SESSION['userLoggedIn'] = $username;
 
+    //$con = mysqli_connect("localhost", "", "", "filmic");
     // Create a user database
-  	$query = "create table IF NOT EXISTS " . $username . "_DB (
-        id INT AUTO_INCREMENT,
-        title VARCHAR(255),
-        year VARCHAR(255),
-        director VARCHAR(255),
-        starringActor VARCHAR(255),
-        PRIMARY KEY (id)
+  	$query = "CREATE TABLE IF NOT EXISTS " . $username . " (
+        book VARCHAR(30),
+        total FLOAT(10,2) NOT NULL DEFAULT '0.00'
     )";
+
   	$result = mysqli_query($con, $query);
 
 
-    header("Location: login.php");
+    header("Location: index.php");
   }
 }
 ?>

@@ -128,7 +128,6 @@ html, body{
   font-weight: bold;
   border: 0;
 }
-
 /*mouse shows hand interaction*/
 #inputContainer button:hover {
   cursor: pointer;
@@ -167,7 +166,6 @@ html, body{
   margin-top:60px;
   font-style: italic;
 }
-
 #hideRegister, #hideLogin{
   color: #939393;
 }

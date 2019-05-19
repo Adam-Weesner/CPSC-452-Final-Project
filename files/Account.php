@@ -13,7 +13,7 @@ class Account{
     $pw = md5($pw); // Encrypt password
 
     // Check if username or password is correct
-    $query = mysqli_query($this->con, "SELECT * FROM users WHERE username='$un' AND password='$pw'");
+    $query = mysqli_query($this->con, "SELECT * FROM members WHERE username='$un' AND password='$pw'");
     if(mysqli_num_rows($query)==1){
       // If even 1 exists, return true
       return true;
@@ -53,7 +53,7 @@ class Account{
     $encryptedPw = md5($pw); //encrypts password with md5()
     $date = date("Y-m-d"); //set date format
     //insert data in DB
-    $result = mysqli_query($this->con, "INSERT INTO users VALUES (DEFAULT, '$un', '$fn', '$ln', '$em', '$encryptedPw', '$date')");
+    $result = mysqli_query($this->con, "INSERT INTO members VALUES (DEFAULT, '$un', '$fn', '$ln', '$em', '$encryptedPw', '$date')");
 
     return $result; //returns true or false
   }
@@ -64,7 +64,7 @@ class Account{
       return;
     }
     //check if username exists in DB, prints error is so
-    $checkUsernameQuery = mysqli_query($this->con, "SELECT username FROM users WHERE username='$un'");
+    $checkUsernameQuery = mysqli_query($this->con, "SELECT username FROM members WHERE username='$un'");
     if(mysqli_num_rows($checkUsernameQuery)!=0){
       array_push($this->errorArray, Constants::$usernameTaken);
       return;
@@ -94,7 +94,7 @@ class Account{
       return;
     }
     //checks is email exists, prints error is so
-    $checkEmailQuery = mysqli_query($this->con, "SELECT email FROM users WHERE email='$em'");
+    $checkEmailQuery = mysqli_query($this->con, "SELECT email FROM members WHERE email='$em'");
     if(mysqli_num_rows($checkEmailQuery)!=0){
       array_push($this->errorArray, Constants::$emailTaken);
       return;

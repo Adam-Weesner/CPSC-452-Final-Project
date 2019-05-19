@@ -11,7 +11,7 @@ if(isset($_POST['loginButton'])){
     // Create a session variable to keep track of logged in user throughout pages
     $_SESSION['userLoggedIn'] = $username;
     $_SESSION['loggedIn'] = true;
-    header("Location: index.php");
+    header("Location: home.php");
   }
 }
 ?>
