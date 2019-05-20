@@ -58,7 +58,7 @@ $result = mysqli_query($con,$query);
 
 echo "<table class='table'>
 <tr>
-<th scope='col'>Books Purchased</th>
+<th scope='col'>Books In Your Cart</th>
 <th scope='col'>Price</th>
 </tr>";
 
@@ -121,8 +121,16 @@ $selection = $_POST['search'];
 		echo "<script>alert('ERROR - Cannot find $selection in $subject');</script>";
 	}
 ?>
+<form method='post'><button class="btn btn-lg btn-primary" name='purchaseRSA' type="purchaseRSA">Purchase (RSA)</button>
+<button class="btn btn-lg btn-primary" name='purchaseDigSig' type="purchaseDigSig">Purchase (Dig. Sig.)</button></form>
 
-
+<?php
+if(isset($_POST['purchaseRSA'])) {
+  header("Location: RSA.php");
+} else if(isset($_POST['purchaseDigSig'])) {
+  header("Location: digitalSignature.php");
+}
+?>
       <hr>
       <h3></h3>
       <p></p>
