@@ -6,7 +6,17 @@ import select
 import sys
 import time
 import address
+import hashlib, uuid
 
+def toHex(s):
+    lst = []
+    for ch in s:
+        hv = hex(ord(ch)).replace('0x', '')
+        if len(hv) == 1:
+            hv = '0'+hv
+        lst.append(hv)
+
+    return reduce(lambda x,y:x+y, lst)
 def Register():
     isTaken = False
 
@@ -29,22 +39,43 @@ def Register():
 
     password = raw_input("Password: ")
 
+    salt = uuid.uuid4().hex
+    hashed_password = hashlib.sha512(password + salt).hexdigest()
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((address.HOST, address.PORT))
 
-    s.sendall("register " + " " + username + " " + password)
+    s.sendall("register " + " " + username + " " + str(hashed_password))
     data = s.recv(1024)
+
+    cursor.execute("UPDATE users SET salt = '{0}' WHERE username = '{1}'".format(salt, username))
+    db.commit()
 
     s.close()
 
 def Validate(username, password):
+
+    # Get user's salt value and rehash password
+    db = pymysql.connect("localhost", "", "", "chat")
+    cursor = db.cursor()
+    cursor.execute("SELECT salt FROM users WHERE username = '{0}'".format(username))
+    result = cursor.fetchone()
+
+    hashed_password = ""
+    if result:
+        salt = str(result[0])
+
+        hashed_password = hashlib.sha512(password + salt).hexdigest()
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((address.HOST, address.PORT))
 
-    s.sendall("validate " + " " + username + " " + password)
+    s.sendall("validate " + " " + username + " " + hashed_password)
     data = s.recv(1024)
 
     s.close()
+    db.close()
+
     return data
 
 

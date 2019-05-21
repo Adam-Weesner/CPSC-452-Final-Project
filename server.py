@@ -50,7 +50,7 @@ def main():
                         command = data.split()
                         results = "false"
 
-                        if len(command) == 3:
+                        if len(command) >= 3:
                             if command[0] == "register":
                                 results = serverUtil.Register(command[1], command[2])
                             if command[0] == "validate":
