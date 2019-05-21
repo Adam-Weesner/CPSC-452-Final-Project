@@ -2,13 +2,13 @@ import select
 import socket
 import sys
 import Queue
-import pymysql
-import importlib
+import serverUtil
+import address
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setblocking(0)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind(('localhost', 4022))
+server.bind((address.HOST, address.PORT))
 server.listen(5)
 inputs = [server]
 outputs = []
@@ -34,8 +34,14 @@ def main():
                     results = "false"
 
                     if len(command) == 3:
+                        if command[0] == "register":
+                            results = serverUtil.Register(command[1], command[2])
                         if command[0] == "validate":
-                            results = Validate(command[1], command[2])
+                            results = serverUtil.Validate(command[1], command[2])
+                    elif len(command) == 4:
+                        if command[0] == "message":
+                            results = "message"
+                            serverUtil.SendMessage(command[1], command[2])
 
                     message_queues[s].put(results)
 
@@ -63,48 +69,6 @@ def main():
                 outputs.remove(s)
             s.close()
             del message_queues[s]
-
-
-def Validate(username, password):
-    isValid = "false"
-
-    print "Validating user " + username + "..."
-
-    # Check if username exists
-    db = pymysql.connect("localhost", "", "", "chat")
-    cursor = db.cursor()
-    cursor.execute("SELECT password FROM users WHERE username = '{0}'".format(username))
-    resultPassword = cursor.fetchone()
-    db.close()
-
-    if resultPassword:
-        # Check if user is already logged in
-        db = pymysql.connect("localhost", "", "", "chat")
-        cursor = db.cursor()
-        cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
-        result = cursor.fetchone()
-        db.close()
-
-        if result[0] == "Offline":
-            # Check if user's password is correct
-            db = pymysql.connect("localhost", "", "", "chat")
-            cursor = db.cursor()
-            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
-            result = cursor.fetchone()
-            db.close()
-
-            if password == resultPassword[0]:
-                isValid = "true"
-                print "Validated.\n"
-            else:
-                print "ERROR - Password is incorrect!\n"
-        else:
-            print "ERROR - User already logged in!\n"
-    else:
-        print "ERROR - Cannot find username!\n"
-
-    return isValid
-
 
 
 if __name__== "__main__":
