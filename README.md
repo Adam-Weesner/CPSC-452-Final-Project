@@ -1,4 +1,4 @@
-# CPSC 452 - Final Project: Chatroom
+# CPSC 452 - Final Project: Secure Chat
 https://www.dropbox.com/s/2kjoycasllo5dqe/FinalProjects.pdf?dl=0
 Due 5/19/2019 at 11:59 pm
 
