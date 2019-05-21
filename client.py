@@ -2,7 +2,10 @@ import socket
 import pymysql
 import importlib
 import address
-import chatClient
+import select
+import sys
+import time
+import address
 
 def Register():
     isTaken = False
@@ -49,38 +52,45 @@ def ChatSession(myUsername, theirUsername, alg):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((address.HOST, address.PORT))
 
+    s.sendall("message")
+
     print "CHATROOM:"
     print "You and " + theirUsername + " have joined the chatroom!\n"
+
     isExitting = False
 
-    s.sendall("message " + " " + myUsername + " " + theirUsername)
-    #chatClient.Start()
+    while not isExitting:
+        sockets_list = [sys.stdin, s]
+        read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
+
+        for socks in read_sockets:
+            if socks == s:
+                time.sleep(.1)
+                message = socks.recv(2048)
+                if message != "message":
+                    print message
+            else:
+                message = raw_input("")
+        # View user list
+                if message == "!users":
+                    UsersOnline(myUsername)
+        # View help
+                elif message == "!help":
+                    print ( "\nCOMMANDS\n" +
+                            "'!users' will list all the registered users.\n" +
+                            "'!exit' will leave the chatroom.\n")
+        # Exit chatroom
+                elif message == "!exit":
+                    print "\nLeaving the chatroom...\n"
+                    isExitting = True
+                    s.send(message)
+        # Send message
+                else:
+                    s.send(message)
+    time.sleep(.1)
     s.close()
 
-"""    while not isExitting:
-        message = raw_input("<< ")
 
-        # Begin symmetric key (provided by server) encryption of "message"
-
-
-# View user list
-        if message == "!users":
-            UsersOnline(myUsername)
-# View help
-        elif message == "!help":
-            print ( "\nCOMMANDS\n" +
-                    "'!users' will list all the registered users.\n" +
-                    "'!exit' will leave the chatroom.\n")
-# Exit chatroom
-        elif message == "!exit":
-            print "\nLeaving the chatroom...\n"
-            isExitting = True
-# Send message
-        else:
-            s.sendall("message " + " " + message + " " + myUsername + " " + theirUsername)
-
-    s.close()
-"""
 
 # Prints users online and their status
 def UsersOnline(myUsername):

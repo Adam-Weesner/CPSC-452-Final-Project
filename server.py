@@ -3,16 +3,19 @@ import socket
 import sys
 import Queue
 import serverUtil
+import time
+from thread import *
 import address
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.setblocking(0)
+server.setblocking(1)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind((address.HOST, address.PORT))
-server.listen(5)
+server.listen(10)
 inputs = [server]
 outputs = []
 message_queues = {}
+list_of_clients = []
 
 def main():
     print "Server established!\n"
@@ -30,18 +33,32 @@ def main():
             else:
                 data = s.recv(1024)
                 if data:
-                    command = data.split()
-                    results = "false"
+                    if data == "message":
+                        """Maintains a list of clients for ease of broadcasting
+                        a message to all available people in the chatroom"""
+                        list_of_clients.append(connection)
 
-                    if len(command) == 3:
-                        if command[0] == "register":
-                            results = serverUtil.Register(command[1], command[2])
-                        if command[0] == "validate":
-                            results = serverUtil.Validate(command[1], command[2])
-                    elif len(command) == 4:
-                        if command[0] == "message":
-                            results = "message"
-                            serverUtil.SendMessage(command[1], command[2])
+                        # prints the address of the user that just connected
+                        print client_address[0] + " connected"
+
+                        # creates and individual thread for every user
+                        # that connects
+                        scope1 = start_new_thread(clientthread,(connection,client_address))
+
+                        results = "message"
+                    else:
+                        command = data.split()
+                        results = "false"
+
+                        if len(command) == 3:
+                            if command[0] == "register":
+                                results = serverUtil.Register(command[1], command[2])
+                            if command[0] == "validate":
+                                results = serverUtil.Validate(command[1], command[2])
+                        elif len(command) == 2:
+                            if command[0] == "message":
+                                results = "message"
+                                serverUtil.SendMessage(command[1], command[2])
 
                     message_queues[s].put(results)
 
@@ -69,6 +86,50 @@ def main():
                 outputs.remove(s)
             s.close()
             del message_queues[s]
+
+
+def clientthread(conn, addr):
+    conn.send("Welcome to this chatroom!")
+    time.sleep(.1)
+    isExitting = False
+    while not isExitting:
+            try:
+                message = conn.recv(2048)
+                if message:
+                    if message != "!exit":
+                        print "<" + addr[0] + "> " + message
+
+                        message_to_send = "<" + addr[0] + "> " + message
+                        broadcast(message_to_send, conn)
+                    else:
+                        print("\User closing chatroom.\n")
+                        isExitting = True
+                else:
+                    isExitting = True
+            except:
+                continue
+
+"""Using the below function, we broadcast the message to all
+clients who's object is not the same as the one sending
+the message """
+def broadcast(message, connection):
+    for clients in list_of_clients:
+        if clients!=connection:
+            try:
+                clients.send(message)
+            except:
+                clients.close()
+
+                # if the link is broken, we remove the client
+                remove(clients)
+
+
+"""The following function simply removes the object
+from the list that was created at the beginning of
+the program"""
+def remove(connection):
+    if connection in list_of_clients:
+        list_of_clients.remove(connection)
 
 
 if __name__== "__main__":
