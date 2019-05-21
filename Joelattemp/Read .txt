@@ -1,0 +1,10 @@
+
+SERVER.PY USAGE
+
+ $ python server.py
+
+##########################################
+
+NEURON.PY USAGE
+
+ $ python neuron.py "host_ip" "port" "password" "nick_name"
