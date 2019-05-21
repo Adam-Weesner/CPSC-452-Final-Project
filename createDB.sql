@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT UNIQUE,
     username VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    status BOOLEAN default false,
+    status VARCHAR(255) default 'Offline',
     PRIMARY KEY (id)
 );
 
