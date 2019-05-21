@@ -1,3 +1,5 @@
+## Note: This is an failed attempt at the Secure Purchase Order assignment, but an attempt nonetheless. Peruse at your leisure.
+
 # CPSC 452 - Final Project: Chatroom
 Due 5/19/2019 at 11:59 pm
 ## Group members
@@ -6,5 +8,3 @@ Due 5/19/2019 at 11:59 pm
 3. Erik Lipsky
 4. Joshua Gomberg
 
-## Instructions
-https://www.dropbox.com/s/2kjoycasllo5dqe/FinalProjects.pdf?dl=0
