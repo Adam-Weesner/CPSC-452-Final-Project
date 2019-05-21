@@ -1,106 +1,111 @@
-import base64
-import sys, socket, select
-from Crypto.Cipher import AES
-import hashlib
-import os
-import signal
+import select
+import socket
+import sys
+import Queue
+import pymysql
+import importlib
 
-def sigint_handler(signum, frame):
-    print ("\n user interrupt ! shutting down")
-    sys.exit()
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setblocking(0)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(('localhost', 4022))
+server.listen(5)
+inputs = [server]
+outputs = []
+message_queues = {}
 
-signal.signal(signal.SIGINT, sigint_handler)
+def main():
+    print "Server established!\n"
 
-def hasher(key):
-
-	return key
-
-
-def encrypt(secret,data):
-	BLOCK_SIZE = 32
-	PADDING = '{'
-	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
-	EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
-	cipher = AES.new(secret)
-	encoded = EncodeAES(cipher, data)
-	return encoded
-
-def decrypt(secret,data):
-	BLOCK_SIZE = 32
-	PADDING = '{'
-	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
-	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(PADDING)
-	cipher = AES.new(secret)
-	decoded = DecodeAES(cipher, data)
-	return decoded
-
-PORT = 9191
-PASSWORD = 'password'
-VIEW = 0
-key = hasher(PASSWORD)
-SOCKET_LIST = []
-RECV_BUFFER = 4096
-
-
-def chat_server():
-
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((str("127.0.0.1"), PORT))
-    server_socket.listen(10)
-
-    SOCKET_LIST.append(server_socket)
-
-    print ("server started on port " + str(PORT))
-
-    while 1:
-
-        ready_to_read,ready_to_write,in_error = select.select(SOCKET_LIST,[],[],0)
-
-        for sock in ready_to_read:
-
-            if sock == server_socket:
-                sockfd, addr = server_socket.accept()
-                SOCKET_LIST.append(sockfd)
-                print ("user (%s, %s) connected" % addr)
-
-                broadcast(server_socket, sockfd, encrypt(key,"[%s:%s] entered our chatting room\n" % addr))
-
+    while inputs:
+        readable, writable, exceptional = select.select(
+            inputs, outputs, inputs)
+        for s in readable:
+            if s is server:
+                connection, client_address = s.accept()
+                connection.setblocking(0)
+                inputs.append(connection)
+                message_queues[connection] = Queue.Queue()
+                print client_address[0] + " is connecting."
             else:
-                try:
-                    data = sock.recv(RECV_BUFFER)
-                    data = decrypt(key,data)
-                    if data:
+                data = s.recv(1024)
+                if data:
+                    command = data.split()
+                    results = "false"
 
-                        broadcast(server_socket, sock,encrypt(key,"\r" + data))
-                        if VIEW == '1':
-                          print (data)
-                    else:
+                    if len(command) == 3:
+                        if command[0] == "validate":
+                            results = Validate(command[1], command[2])
 
-                        if sock in SOCKET_LIST:
-                            SOCKET_LIST.remove(sock)
+                    message_queues[s].put(results)
 
-                        broadcast(server_socket, sock,encrypt(key,"user (%s, %s) is offline\n" % addr))
+                    if s not in outputs:
+                        outputs.append(s)
 
-                except:
-                    broadcast(server_socket, sock, "user (%s, %s) is offline\n" % addr)
-                    continue
+                else:
+                    if s in outputs:
+                        outputs.remove(s)
+                    inputs.remove(s)
+                    s.close()
+                    del message_queues[s]
 
-    server_socket.close()
+        for s in writable:
+            try:
+                next_msg = message_queues[s].get_nowait()
+            except Queue.Empty:
+                outputs.remove(s)
+            else:
+                s.send(next_msg)
 
-def broadcast (server_socket, sock, message):
-    for socket in SOCKET_LIST:
+        for s in exceptional:
+            inputs.remove(s)
+            if s in outputs:
+                outputs.remove(s)
+            s.close()
+            del message_queues[s]
 
-        if socket != server_socket and socket != sock :
-            try :
-                socket.send(message)
-            except :
 
-                socket.close()
+def Validate(username, password):
+    isValid = "false"
 
-                if socket in SOCKET_LIST:
-                    SOCKET_LIST.remove(socket)
+    print "Validating user " + username + "..."
 
-if __name__ == "__main__":
+    # Check if username exists
+    db = pymysql.connect("localhost", "", "", "chat")
+    cursor = db.cursor()
+    cursor.execute("SELECT password FROM users WHERE username = '{0}'".format(username))
+    resultPassword = cursor.fetchone()
+    db.close()
 
-    sys.exit(chat_server())
+    if resultPassword:
+        # Check if user is already logged in
+        db = pymysql.connect("localhost", "", "", "chat")
+        cursor = db.cursor()
+        cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
+        result = cursor.fetchone()
+        db.close()
+
+        if result[0] == "Offline":
+            # Check if user's password is correct
+            db = pymysql.connect("localhost", "", "", "chat")
+            cursor = db.cursor()
+            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
+            result = cursor.fetchone()
+            db.close()
+
+            if password == resultPassword[0]:
+                isValid = "true"
+                print "Validated.\n"
+            else:
+                print "ERROR - Password is incorrect!\n"
+        else:
+            print "ERROR - User already logged in!\n"
+    else:
+        print "ERROR - Cannot find username!\n"
+
+    return isValid
+
+
+
+if __name__== "__main__":
+  main()

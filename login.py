@@ -1,88 +1,108 @@
-import base64
-import sys, socket, select
-from Crypto.Cipher import AES
-import os
-import hashlib
-import signal
+# To get pymysql, use pip install pymysql
+import pymysql
+import importlib
+import client
 
-def sigint_handler(signum, frame):
-    print ('\n user interrupt ! shutting down')
-    sys.exit()
+def main():
+    print "WELCOME TO CHAT 1.0\n"
 
-signal.signal(signal.SIGINT, sigint_handler)
+    username = raw_input("Enter your username: ")
+    password = raw_input("Enter your password: ")
 
-def hasher(key):
+    # Server verifies user/pass, if true, then set this user's activity to "Online"
+    isValid = client.Validate(username, password)
 
-	return key
+    if isValid == "true":
+        print "\nWelcome " + username + "!"
 
-def encrypt(secret,data):
-	BLOCK_SIZE = 32
-	PADDING = '{'
-	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
-	EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
-	cipher = AES.new(secret)
-	encoded = EncodeAES(cipher, data)
-	return encoded
+        # Set status to Online
+        db = pymysql.connect("localhost", "", "", "chat")
+        cursor = db.cursor()
+        cursor.execute("UPDATE users SET status = 'Online' WHERE username = '{0}'".format(username))
+        db.commit()
+        db.close()
+        isExitting = False
 
-def decrypt(secret,data):
-	BLOCK_SIZE = 32
-	PADDING = '{'
-	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
-	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(PADDING)
-	cipher = AES.new(secret)
-	decoded = DecodeAES(cipher, data)
-	return decoded
+        # Get list of users
+        UsersOnline(username)
+        print "Type '!help' to see a list of commands.\n"
+
+        while not isExitting:
+            command = raw_input("Enter command: ")
+
+            db = pymysql.connect("localhost", "", "", "chat")
+            cursor = db.cursor()
+# Invite
+            if command[0:8] == "!invite ":
+                inviteCommand = command.split(" ")
+                print len(command)
+                if len(command) != 2:
+                    db = pymysql.connect("localhost", "", "", "chat")
+                    cursor = db.cursor()
+                    cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(inviteCommand[1]))
+                    result = cursor.fetchone()
+
+                    if result:
+                        if result[0] != username:
+                            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(inviteCommand[1]))
+                            status = cursor.fetchone()
+                            if status[0] == "Online":
+                                Invite(username, inviteCommand[2])
+                            else:
+                                print "\nERROR - " + result[0] + " is not online at the moment!\n"
+                    else:
+                        print "\nERROR - Cannot find " + inviteCommand[1] + "!\n"
+                else:
+                    print "\nERROR - Invite using the form '!invite <name> <RSA/DS>'!"
+# Help
+            elif command == "!help":
+                print ( "\nCOMMANDS\n" +
+                        "'!invite <name> <RSA/DS>' will open a chat with that person using either RSA or Digital Signature.\n" +
+                        "'!users' will list all the registered users.\n" +
+                        "'!exit' will quit the program.\n")
+# Users
+            elif command == "!users":
+                UsersOnline(username)
+# Exit
+            elif command == "!exit":
+                print "\nExiting chatroom. See ya!\n"
+                isExitting = True
+                # Set status to Offline
+                cursor.execute("UPDATE users SET status = 'Offline' WHERE username = '{0}'".format(username))
+                db.commit()
+            else:
+                print "\nERROR - Invalid command! Type '!help' to see a list of commands\n"
 
 
-def chat_client():
-    if(len(sys.argv) < 5) :
-        print ('Usage : python client.py <hostname> <port> <password> <nick_name>')
-        sys.exit()
 
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    key = sys.argv[3]
-    key = hasher(key)
-    uname = sys.argv[4]
+# Prints users online and their status
+def UsersOnline(myUsername):
+    db = pymysql.connect("localhost", "", "", "chat")
+    cursor = db.cursor()
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(2)
+    cursor.execute("SELECT username FROM users")
+    usersResult = cursor.fetchall()
+
+    cursor.execute("SELECT status FROM users")
+    statusResult = cursor.fetchall()
+
+    offlineUsers = []
+
+    print "\nUSERS OFFLINE:"
+    for i in range(len(usersResult)):
+        if usersResult[i][0] != myUsername:
+            if statusResult[i][0] == "Offline":
+                print usersResult[i][0]
+            else:
+                offlineUsers.append(usersResult[i][0])
+    print "\nONLINE USERS: \n" + "\n".join(offlineUsers) + "\n"
+    db.close()
 
 
-    try :
-        s.connect((host, port))
+# Connects to another user
+def Invite(myUsername, theirUsername, alg):
+    print "\nInviting " + theirUsername + " using " + alg + "...\n"
 
-    except :
-        sys.exit()
 
-    print ("Connected to remote host. You can start sending messages")
-    sys.stdout.write(" me "); sys.stdout.flush()
-
-    while 1:
-        socket_list = [sys.stdin, s]
-        read_sockets, write_sockets, error_sockets = select.select(socket_list , [], [])
-
-        for sock in read_sockets:
-            if sock == s:
-
-                data = sock.recv(4096)
-
-                if not data :
-                    print ("Disconnected from chat server")
-                    sys.exit()
-                else :
-                    data = decrypt(key,data)
-                    sys.stdout.write(data)
-                    sys.stdout.write(" me "); sys.stdout.flush()
-
-            else :
-
-                msg = sys.stdin.readline()
-                msg = '[ '+ uname +': ] '+msg
-                msg = encrypt(key,msg)
-                s.send(msg)
-                sys.stdout.write(" me "); sys.stdout.flush()
-
-if __name__ == "__main__":
-
-    sys.exit(chat_client())
+if __name__== "__main__":
+  main()
