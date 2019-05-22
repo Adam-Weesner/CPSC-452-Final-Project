@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     status VARCHAR(255) default 'Offline',
     salt VARCHAR(255) default "",
+    publicKey VARCHAR(255) default "",
+    privateKey VARCHAR(255) default "",
     PRIMARY KEY (id)
 );
 

@@ -2,6 +2,7 @@
 import pymysql
 import importlib
 import client
+from client import account
 
 def main():
     print "\nWELCOME TO CHAT 1.0\n"
@@ -37,37 +38,32 @@ def main():
 
                 db = pymysql.connect("localhost", "", "", "chat")
                 cursor = db.cursor()
+                db.close()
 # Invite
-                if command[0:7] == "!invite":
-                    inviteCommand = command.split(" ")
+                if command[0:8] == "!invite ":
+                    db = pymysql.connect("localhost", "", "", "chat")
+                    cursor = db.cursor()
+                    cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(command[8::]))
+                    result = cursor.fetchone()
 
-                    if len(inviteCommand) == 3:
-                        db = pymysql.connect("localhost", "", "", "chat")
-                        cursor = db.cursor()
-                        cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(inviteCommand[1]))
-                        result = cursor.fetchone()
-
-                        if result:
-                            if result[0] != username:
-                                cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(inviteCommand[1]))
-                                status = cursor.fetchone()
-                                if status[0] == "Online":
-                                    if inviteCommand[2].upper() == "RSA" or inviteCommand[2].upper() == "DSA":
-                                        Invite(username, inviteCommand[1], inviteCommand[2])
-                                    else:
-                                        print "\nERROR - Use either the 'RSA' or 'DSA' algorithms!\n"
-                                else:
-                                    print "\nERROR - " + result[0] + " is not online at the moment!\n"
+                    if result:
+                        if command[8::] != username:
+                            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(command[8::]))
+                            status = cursor.fetchone()
+                            db.close()
+                            if status[0] == "Online":
+                                print "\nInviting " + command[8::] + "..."
+                                client.ChatSession(username, command[8::])
                             else:
-                                print "\nERROR - You cannot invite yourself!\n"
+                                print "\nERROR - " + command[8::] + " is not online at the moment!\n"
                         else:
-                            print "\nERROR - Cannot find " + inviteCommand[1] + "!\n"
+                            print "\nERROR - You cannot invite yourself!\n"
                     else:
-                        print "\nERROR - Invite using the form '!invite <name> <RSA/DSA>'!\n"
+                        print "\nERROR - Cannot find " + command[8::] + "!\n"
 # Help
                 elif command == "!help":
                     print ( "\nCOMMANDS\n" +
-                            "'!invite <name> <RSA/DSA>' will open a chat with that person using either RSA or DSA.\n" +
+                            "'!invite <name>' will open a chat with that person using either RSA or DSA.\n" +
                             "'!users' will list all the registered users.\n" +
                             "'!refresh' will reset all user's statuses to 'Offline'.\n" +
                             "'!exit' will quit the program.\n")
@@ -84,10 +80,11 @@ def main():
                     # Set status to Offline
                     cursor.execute("UPDATE users SET status = 'Offline' WHERE username = '{0}'".format(username))
                     db.commit()
+                    db.close()
                 else:
                     print "\nERROR - Invalid command! Type '!help' to see a list of commands\n"
         else:
-            print "\n" + isValid
+            print isValid
 
 
 # Prints users online and their status
@@ -128,12 +125,6 @@ def Refresh(username):
     db.commit()
 
     db.close()
-
-
-# Connects to another user
-def Invite(myUsername, theirUsername, alg):
-    print "\nInviting " + theirUsername + " using " + alg.upper() + "...\n"
-    client.ChatSession(myUsername, theirUsername, alg)
 
 
 if __name__== "__main__":

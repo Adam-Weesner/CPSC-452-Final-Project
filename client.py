@@ -7,16 +7,14 @@ import sys
 import time
 import address
 import hashlib, uuid
+import pvtPubKeys
+from base64 import b64encode, b64decode
+import account
 
-def toHex(s):
-    lst = []
-    for ch in s:
-        hv = hex(ord(ch)).replace('0x', '')
-        if len(hv) == 1:
-            hv = '0'+hv
-        lst.append(hv)
+account = account.Account("", object(), object())
+#privateKey = object()
+#publicKey = object()
 
-    return reduce(lambda x,y:x+y, lst)
 def Register():
     isTaken = False
 
@@ -39,6 +37,8 @@ def Register():
 
     password = raw_input("Password: ")
 
+    account.name = username
+
     salt = uuid.uuid4().hex
     hashed_password = hashlib.sha512(password + salt).hexdigest()
 
@@ -53,8 +53,8 @@ def Register():
 
     s.close()
 
-def Validate(username, password):
 
+def Validate(username, password):
     # Get user's salt value and rehash password
     db = pymysql.connect("localhost", "", "", "chat")
     cursor = db.cursor()
@@ -76,14 +76,48 @@ def Validate(username, password):
     s.close()
     db.close()
 
+    # Get new private/public keys
+    if data == "true":
+        isDone = False
+        print ""
+        while not isDone:
+            choice = raw_input("Create private/keys using RSA or DCA? ").upper()
+            if choice == "RSA" or choice == "DCA":
+                account.privateKey = pvtPubKeys.GeneratesKeys(choice)
+                account.publicKey = account.privateKey.publickey()
+                isDone = True
+            else:
+                print "\nERROR - Please input either RSA or DCA!\n"
     return data
 
 
-def ChatSession(myUsername, theirUsername, alg):
+def ChatSession(myUsername, theirUsername):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((address.HOST, address.PORT))
 
-    s.sendall("message")
+    # Encrypt symmetric Key using RSA or DCA algorithms.
+    isDone = False
+    choice = ""
+    print ""
+    while not isDone:
+        choice = raw_input("RSA or DCA for symmetric key encryption? ").upper()
+        if choice == "RSA" or choice == "DCA":
+            isDone = True
+        else:
+            print "\nERROR - Please input either RSA or DCA!\n"
+
+
+    # Invited user sends other info to server
+    s.sendall("message" + " " + myUsername + " " + theirUsername + " " + choice)
+    symmetricKey = s.recv(1024)
+
+    # Encrypt symmetricKey using user's public key
+    print publicKey
+    time.sleep(.1)
+    #encryptedSymmetricKey = b64encode(pvtPubKeys.EncryptSymmetric(symmetricKey, publicKey))
+
+    print "Encrypted Symmetric Key: "
+    #print encryptedSymmetricKey
 
     print "CHATROOM:"
     print "You and " + theirUsername + " have joined the chatroom!\n"
@@ -102,20 +136,39 @@ def ChatSession(myUsername, theirUsername, alg):
                     print message
             else:
                 message = raw_input("")
-        # View user list
-                if message == "!users":
+# Invite another user
+                if message[0:8] == "!invite ":
+                    db = pymysql.connect("localhost", "", "", "chat")
+                    cursor = db.cursor()
+                    cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(message[8::]))
+                    result = cursor.fetchone()
+                    if result:
+                        if message[8::] != myUsername:
+                            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(message[8::]))
+                            status = cursor.fetchone()
+                            if message[0] == "Online":
+                                print "\nInvite send to " + message[8::] + "!"
+                            else:
+                                print "\nERROR - " + message[8::] + " is not online at the moment!\n"
+                        else:
+                            print "\nERROR - You cannot invite yourself!\n"
+                    else:
+                        print "\nERROR - Cannot find " + message[8::] + "!\n"
+                    db.close()
+# View user list
+                elif message == "!users":
                     UsersOnline(myUsername)
-        # View help
+# View help
                 elif message == "!help":
                     print ( "\nCOMMANDS\n" +
                             "'!users' will list all the registered users.\n" +
                             "'!exit' will leave the chatroom.\n")
-        # Exit chatroom
+# Exit chatroom
                 elif message == "!exit":
                     print "\nLeaving the chatroom...\n"
                     isExitting = True
                     s.send(message)
-        # Send message
+# Send message
                 else:
                     s.send(message)
     time.sleep(.1)

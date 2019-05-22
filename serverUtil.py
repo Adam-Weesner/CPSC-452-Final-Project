@@ -1,5 +1,10 @@
 import pymysql
 import importlib
+import string
+import random
+import Crypto
+from Crypto.Cipher import DES
+
 
 def Register(username, password):
     print "Registering " + username + "..."
@@ -15,7 +20,7 @@ def Register(username, password):
 def Validate(username, password):
     print "Validating user " + username + "..."
 
-    isValid = "false"
+    isValid = "\nERROR - Invalid Credentials!\n"
 
     # Check if username exists
     db = pymysql.connect("localhost", "", "", "chat")
@@ -49,18 +54,10 @@ def Validate(username, password):
                 cursor.execute("UPDATE users SET status = 'Online' WHERE username = '{0}'".format(username))
                 db.commit()
             else:
-                isValid = "ERROR - Password is incorrect!\n"
+                isValid = "\nERROR - Password is incorrect!\n"
         else:
-            isValid = "ERROR - User already logged in!\n"
+            isValid = "\nERROR - User already logged in!\n"
     else:
-        isValid = "ERROR - Cannot find username!\n"
+        isValid = "\nERROR - Cannot find username!\n"
 
     return isValid
-
-
-def SendMessage(sender, receiver):
-    print "Sending message from " + sender + " to " + receiver + "..."
-
-    chatserver.Start()
-
-    print "Sent!"

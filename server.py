@@ -17,6 +17,8 @@ outputs = []
 message_queues = {}
 list_of_clients = []
 
+symmetricKey = "Thisisasecretwow"
+
 def main():
     print "Server established!\n"
 
@@ -33,32 +35,27 @@ def main():
             else:
                 data = s.recv(1024)
                 if data:
-                    if data == "message":
-                        """Maintains a list of clients for ease of broadcasting
-                        a message to all available people in the chatroom"""
-                        list_of_clients.append(connection)
+                    command = data.split()
+                    results = "false"
 
-                        # prints the address of the user that just connected
-                        print client_address[0] + " connected"
+                    if len(command) >= 3:
+                        if command[0] == "message":
+                            """Maintains a list of clients for ease of broadcasting
+                            a message to all available people in the chatroom"""
+                            list_of_clients.append(connection)
 
-                        # creates and individual thread for every user
-                        # that connects
-                        scope1 = start_new_thread(clientthread,(connection,client_address))
+                            print command[1] + " & " + command[2] +  " have been invited!"
 
-                        results = "message"
-                    else:
-                        command = data.split()
-                        results = "false"
+                            # Send public key-encrypted symmetric Key to user
+                            results = symmetricKey
 
-                        if len(command) >= 3:
-                            if command[0] == "register":
-                                results = serverUtil.Register(command[1], command[2])
-                            if command[0] == "validate":
-                                results = serverUtil.Validate(command[1], command[2])
-                        elif len(command) == 2:
-                            if command[0] == "message":
-                                results = "message"
-                                serverUtil.SendMessage(command[1], command[2])
+                            # Create a new thread for each user
+                            scope = start_new_thread(clientthread,(connection,client_address))
+
+                        elif command[0] == "register":
+                            results = serverUtil.Register(command[1], command[2])
+                        elif command[0] == "validate":
+                            results = serverUtil.Validate(command[1], command[2])
 
                     message_queues[s].put(results)
 
