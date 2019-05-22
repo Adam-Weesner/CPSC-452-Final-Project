@@ -10,6 +10,7 @@ import hashlib, uuid
 from base64 import b64encode, b64decode
 import account
 import ManageKeys
+import configDB
 
 account = account.Account("", object(), object())
 
@@ -20,7 +21,7 @@ def Register():
         username = raw_input("Username: ")
 
         # Check if username is taken
-        db = pymysql.connect("localhost", "", "", "chat")
+        db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
         cursor = db.cursor()
         cursor.execute("SELECT username FROM users")
         usersResult = cursor.fetchall()
@@ -55,7 +56,7 @@ def Register():
 
 def Validate(username, password):
     # Get user's salt value and rehash password
-    db = pymysql.connect("localhost", "", "", "chat")
+    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
     cursor = db.cursor()
     cursor.execute("SELECT salt FROM users WHERE username = '{0}'".format(username))
     result = cursor.fetchone()
@@ -112,22 +113,21 @@ def ChatSession(myUsername, theirUsername):
 
     symmetricKey = s.recv(1024)
 
-    time.sleep(.8)
+    time.sleep(.5)
 
     # Encrypt symmetricKey using user's public key
     encryptedSymmetricKey = ManageKeys.PublicEncryption(symmetricKey, account.publicKey)
     print "Encrypted Symmetric Key: "
     print encryptedSymmetricKey
 
-    time.sleep(.8)
-
     # Decrypt symmetricKey using user's private keys
     decryptedSymmetricKey = ManageKeys.PrivateDecryption(encryptedSymmetricKey, account.privateKey)
     print "\nDecrypted Symmetric Key: "
     print decryptedSymmetricKey
-    time.sleep(.8)
-    
-    print "CHATROOM:"
+
+    time.sleep(1)
+
+    print "\nCHATROOM:"
     print "You and " + theirUsername + " have joined the chatroom!\n"
 
     isExitting = False
@@ -147,7 +147,7 @@ def ChatSession(myUsername, theirUsername):
 # Invite another user
                 if message[0:8] == "!invite ":
                     if message[8::] != myUsername:
-                        db = pymysql.connect("localhost", "", "", "chat")
+                        db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
                         cursor = db.cursor()
                         cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(message[8::]))
                         status = cursor.fetchone()
@@ -184,7 +184,7 @@ def ChatSession(myUsername, theirUsername):
 
 # Prints users online and their status
 def UsersOnline(myUsername):
-    db = pymysql.connect("localhost", "", "", "chat")
+    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
     cursor = db.cursor()
 
     cursor.execute("SELECT username FROM users")

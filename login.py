@@ -1,6 +1,7 @@
 # To get pymysql, use pip install pymysql
 import pymysql
 import importlib
+import configDB
 import client
 from client import account
 
@@ -36,12 +37,12 @@ def main():
             while not isExitting:
                 command = raw_input("Enter command: ")
 
-                db = pymysql.connect("localhost", "", "", "chat")
+                db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
                 cursor = db.cursor()
                 db.close()
 # Invite
                 if command[0:8] == "!invite ":
-                    db = pymysql.connect("localhost", "", "", "chat")
+                    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
                     cursor = db.cursor()
                     cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(command[8::]))
                     result = cursor.fetchone()
@@ -78,7 +79,7 @@ def main():
                     print "\nExiting chatroom. See ya!\n"
                     isExitting = True
                     # Set status to Offline
-                    db = pymysql.connect("localhost", "", "", "chat")
+                    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
                     cursor = db.cursor()
                     cursor.execute("UPDATE users SET status = 'Offline' WHERE username = '{0}'".format(username))
                     db.commit()
@@ -92,7 +93,7 @@ def main():
 
 # Prints users online and their status
 def UsersOnline(myUsername):
-    db = pymysql.connect("localhost", "", "", "chat")
+    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
     cursor = db.cursor()
 
     cursor.execute("SELECT username FROM users")
@@ -119,7 +120,7 @@ def UsersOnline(myUsername):
 def Refresh(username):
     print "\nRefreshed all users.\n"
 
-    db = pymysql.connect("localhost", "", "", "chat")
+    db = pymysql.connect(configDB.DBaddress, configDB.DBusername, configDB.DBpassword, configDB.DBdatabase)
     cursor = db.cursor()
 
     cursor.execute("UPDATE users SET status = 'Offline'")
