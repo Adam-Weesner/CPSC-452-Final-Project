@@ -1,6 +1,7 @@
+import ManageKeys
 import select
-import socket
 import sys
+import socket
 import Queue
 import serverUtil
 import time
@@ -15,11 +16,11 @@ server.listen(10)
 inputs = [server]
 outputs = []
 message_queues = {}
-list_of_clients = []
+clientList = []
 
-symmetricKey = "Thisisasecretwow"
 
 def main():
+    symmetricKey = "Thisisasecretwow"
     print "Server established!\n"
 
     while inputs:
@@ -27,11 +28,11 @@ def main():
             inputs, outputs, inputs)
         for s in readable:
             if s is server:
-                connection, client_address = s.accept()
+                connection, clientAddr = s.accept()
                 connection.setblocking(0)
                 inputs.append(connection)
                 message_queues[connection] = Queue.Queue()
-                print client_address[0] + " is connecting."
+                print clientAddr[0] + " is connecting."
             else:
                 data = s.recv(1024)
                 if data:
@@ -42,15 +43,21 @@ def main():
                         if command[0] == "message":
                             """Maintains a list of clients for ease of broadcasting
                             a message to all available people in the chatroom"""
-                            list_of_clients.append(connection)
+                            clientList.append(connection)
 
                             print command[1] + " & " + command[2] +  " have been invited!"
+
+                            alg = command[3]
+
+                            import Crypto.PublicKey.RSA as RSA
+                            from Crypto.PublicKey.RSA import generate, importKey
+                            #publicKey = RSA.importKey(command[4])
 
                             # Send public key-encrypted symmetric Key to user
                             results = symmetricKey
 
                             # Create a new thread for each user
-                            scope = start_new_thread(clientthread,(connection,client_address))
+                            scope = start_new_thread(clientThread,(connection,clientAddr))
 
                         elif command[0] == "register":
                             results = serverUtil.Register(command[1], command[2])
@@ -71,11 +78,11 @@ def main():
 
         for s in writable:
             try:
-                next_msg = message_queues[s].get_nowait()
+                nextMessage = message_queues[s].get_nowait()
             except Queue.Empty:
                 outputs.remove(s)
             else:
-                s.send(next_msg)
+                s.send(nextMessage)
 
         for s in exceptional:
             inputs.remove(s)
@@ -85,7 +92,7 @@ def main():
             del message_queues[s]
 
 
-def clientthread(conn, addr):
+def clientThread(conn, addr):
     conn.send("Welcome to this chatroom!")
     time.sleep(.1)
     isExitting = False
@@ -106,11 +113,10 @@ def clientthread(conn, addr):
             except:
                 continue
 
-"""Using the below function, we broadcast the message to all
-clients who's object is not the same as the one sending
-the message """
+
+# Display text for all connected to see.
 def broadcast(message, connection):
-    for clients in list_of_clients:
+    for clients in clientList:
         if clients!=connection:
             try:
                 clients.send(message)
@@ -125,8 +131,8 @@ def broadcast(message, connection):
 from the list that was created at the beginning of
 the program"""
 def remove(connection):
-    if connection in list_of_clients:
-        list_of_clients.remove(connection)
+    if connection in clientList:
+        clientList.remove(connection)
 
 
 if __name__== "__main__":

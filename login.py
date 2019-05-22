@@ -78,8 +78,11 @@ def main():
                     print "\nExiting chatroom. See ya!\n"
                     isExitting = True
                     # Set status to Offline
+                    db = pymysql.connect("localhost", "", "", "chat")
+                    cursor = db.cursor()
                     cursor.execute("UPDATE users SET status = 'Offline' WHERE username = '{0}'".format(username))
                     db.commit()
+                    cursor.close()
                     db.close()
                 else:
                     print "\nERROR - Invalid command! Type '!help' to see a list of commands\n"
@@ -108,6 +111,7 @@ def UsersOnline(myUsername):
             else:
                 offlineUsers.append(usersResult[i][0])
     print "\nONLINE USERS: \n" + "\n".join(offlineUsers) + "\n"
+    cursor.close()
     db.close()
 
 
@@ -124,6 +128,7 @@ def Refresh(username):
     cursor.execute("UPDATE users SET status = 'Online' WHERE username = '{0}'".format(username))
     db.commit()
 
+    cursor.close()
     db.close()
 
 

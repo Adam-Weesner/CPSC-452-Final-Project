@@ -13,6 +13,7 @@ def Register(username, password):
     cursor = db.cursor()
     cursor.execute("INSERT INTO users (username, password) VALUES ('{0}', '{1}')".format(username, password))
     db.commit()
+    cursor.close()
     db.close()
 
     return "valid"
@@ -27,6 +28,7 @@ def Validate(username, password):
     cursor = db.cursor()
     cursor.execute("SELECT password FROM users WHERE username = '{0}'".format(username))
     resultPassword = cursor.fetchone()
+    cursor.close()
     db.close()
 
     if resultPassword:
@@ -35,6 +37,7 @@ def Validate(username, password):
         cursor = db.cursor()
         cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
         result = cursor.fetchone()
+        cursor.close()
         db.close()
 
         if result[0] == "Offline":
@@ -43,6 +46,7 @@ def Validate(username, password):
             cursor = db.cursor()
             cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(username))
             result = cursor.fetchone()
+            cursor.close()
             db.close()
 
             if password == resultPassword[0]:
@@ -52,6 +56,7 @@ def Validate(username, password):
                 db = pymysql.connect("localhost", "", "", "chat")
                 cursor = db.cursor()
                 cursor.execute("UPDATE users SET status = 'Online' WHERE username = '{0}'".format(username))
+                cursor.close()
                 db.commit()
             else:
                 isValid = "\nERROR - Password is incorrect!\n"

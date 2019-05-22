@@ -7,13 +7,11 @@ import sys
 import time
 import address
 import hashlib, uuid
-import pvtPubKeys
 from base64 import b64encode, b64decode
 import account
+import ManageKeys
 
 account = account.Account("", object(), object())
-#privateKey = object()
-#publicKey = object()
 
 def Register():
     isTaken = False
@@ -51,6 +49,7 @@ def Register():
     cursor.execute("UPDATE users SET salt = '{0}' WHERE username = '{1}'".format(salt, username))
     db.commit()
 
+    cursor.close()
     s.close()
 
 
@@ -74,20 +73,19 @@ def Validate(username, password):
     data = s.recv(1024)
 
     s.close()
+    cursor.close()
     db.close()
 
     # Get new private/public keys
     if data == "true":
-        isDone = False
-        print ""
-        while not isDone:
-            choice = raw_input("Create private/keys using RSA or DCA? ").upper()
-            if choice == "RSA" or choice == "DCA":
-                account.privateKey = pvtPubKeys.GeneratesKeys(choice)
-                account.publicKey = account.privateKey.publickey()
-                isDone = True
-            else:
-                print "\nERROR - Please input either RSA or DCA!\n"
+        privateKey , publicKey = ManageKeys.GenerateKeys()
+        account.privateKey = privateKey
+        account.publicKey = publicKey
+        print "This is your private key: "
+        print account.privateKey
+        print "This is your public key: "
+        print account.publicKey
+        isDone = True
     return data
 
 
@@ -106,19 +104,29 @@ def ChatSession(myUsername, theirUsername):
         else:
             print "\nERROR - Please input either RSA or DCA!\n"
 
+    # Package public key for transport
+    pem_public_key = account.publicKey.exportKey(format='PEM')
 
     # Invited user sends other info to server
-    s.sendall("message" + " " + myUsername + " " + theirUsername + " " + choice)
+    s.sendall("message" + " " + myUsername + " " + theirUsername + " " + choice + " " + pem_public_key)
+
     symmetricKey = s.recv(1024)
 
+    time.sleep(.8)
+
     # Encrypt symmetricKey using user's public key
-    print publicKey
-    time.sleep(.1)
-    #encryptedSymmetricKey = b64encode(pvtPubKeys.EncryptSymmetric(symmetricKey, publicKey))
-
+    encryptedSymmetricKey = ManageKeys.PublicEncryption(symmetricKey, account.publicKey)
     print "Encrypted Symmetric Key: "
-    #print encryptedSymmetricKey
+    print encryptedSymmetricKey
 
+    time.sleep(.8)
+
+    # Decrypt symmetricKey using user's private keys
+    decryptedSymmetricKey = ManageKeys.PrivateDecryption(encryptedSymmetricKey, account.privateKey)
+    print "\nDecrypted Symmetric Key: "
+    print decryptedSymmetricKey
+    time.sleep(.8)
+    
     print "CHATROOM:"
     print "You and " + theirUsername + " have joined the chatroom!\n"
 
@@ -138,29 +146,26 @@ def ChatSession(myUsername, theirUsername):
                 message = raw_input("")
 # Invite another user
                 if message[0:8] == "!invite ":
-                    db = pymysql.connect("localhost", "", "", "chat")
-                    cursor = db.cursor()
-                    cursor.execute("SELECT username FROM users WHERE username = '{0}'".format(message[8::]))
-                    result = cursor.fetchone()
-                    if result:
-                        if message[8::] != myUsername:
-                            cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(message[8::]))
-                            status = cursor.fetchone()
-                            if message[0] == "Online":
-                                print "\nInvite send to " + message[8::] + "!"
-                            else:
-                                print "\nERROR - " + message[8::] + " is not online at the moment!\n"
+                    if message[8::] != myUsername:
+                        db = pymysql.connect("localhost", "", "", "chat")
+                        cursor = db.cursor()
+                        cursor.execute("SELECT status FROM users WHERE username = '{0}'".format(message[8::]))
+                        status = cursor.fetchone()
+                        cursor.close()
+                        db.close()
+                        if status[0] == "Online":
+                            print "\nInvite sent to " + message[8::] + "!\n"
                         else:
-                            print "\nERROR - You cannot invite yourself!\n"
+                            print "\nERROR - " + message[8::] + " is not online at the moment!\n"
                     else:
-                        print "\nERROR - Cannot find " + message[8::] + "!\n"
-                    db.close()
+                        print "\nERROR - You cannot invite yourself!\n"
 # View user list
                 elif message == "!users":
                     UsersOnline(myUsername)
 # View help
                 elif message == "!help":
                     print ( "\nCOMMANDS\n" +
+                            "'!invite' will call an invite to another user.\n" +
                             "'!users' will list all the registered users.\n" +
                             "'!exit' will leave the chatroom.\n")
 # Exit chatroom
@@ -170,6 +175,7 @@ def ChatSession(myUsername, theirUsername):
                     s.send(message)
 # Send message
                 else:
+                    # Encrypt using symmetric key using the RSA or DSA algorithms
                     s.send(message)
     time.sleep(.1)
     s.close()
@@ -197,4 +203,5 @@ def UsersOnline(myUsername):
             else:
                 offlineUsers.append(usersResult[i][0])
     print "\nONLINE USERS: \n" + "\n".join(offlineUsers) + "\n"
+    cursor.close()
     db.close()
